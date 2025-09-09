@@ -1,28 +1,29 @@
 package main
 
-import(
+import (
 	"database/sql"
 	"log"
-	"github.com/mattn/go-sqlite3")
 
-var db *sql.DB
+	_ "github.com/glebarez/sqlite"
+)
 
-func initDB()  {
+var DB *sql.DB
+
+func InitDB() {
 	var err error
-	db, err = sql.open("sqlite3", "notes.db")
-	if errr != nil {
+	DB, err = sql.Open("sqlite", "notes.db")
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	createTable := '
-	CREATE TABLE IF NOT EXISTS notes (
-		id SERIAL PRIMARY KEY,
-		title TEXT NOT NULL,
-		contrnt TEXT NOT NULL
-		);
-		'
-	_, err = db.Exec(createTable)
+	createTableSQL := `CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL
+    );`
+
+	_, err = DB.Exec(createTableSQL)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error creating table: %v", err)
 	}
 }
