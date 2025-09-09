@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 func NotesHandler(w http.ResponseWriter, r *http.Request) {
@@ -17,6 +19,21 @@ func NotesHandler(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		http.Error(w, "Method error", http.StatusMethodNotAllowed)
+	}
+}
+
+func NoteByIDHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/notes/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		http.Error(w, "ID error", http.StatusBadRequest)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		handleGetNoteByID(w, r, id)
+	default:
+		http.Error(w, "getbyid method error", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -96,4 +113,24 @@ func GetAllNotes() ([]Note, error) {
 		notes = append(notes, n)
 	}
 	return notes, rows.Err()
+}
+
+func handleGetNoteByID(w http.ResponseWriter, r *http.Request, id int) {
+	note, err := GetNoteByID(id)
+	if err != nil {
+		http.Error(w, "Note ID not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(note)
+}
+
+func GetNoteByID(id int) (*Note, error) {
+	row := DB.QueryRow("SELECT id, title, content FROM notes WHERE id = ?", id)
+	var n Note
+	err := row.Scan(&n.ID, &n.Title, &n.Content)
+	if err != nil {
+		return nil, err
+	}
+	return &n, nil
 }
