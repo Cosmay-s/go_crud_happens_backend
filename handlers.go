@@ -8,8 +8,13 @@ import (
 
 func NotesHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
+
 	case http.MethodPost:
 		handleCreateNote(w, r)
+
+	case http.MethodGet:
+		handleGetAllNotes(w, r)
+
 	default:
 		http.Error(w, "Method error", http.StatusMethodNotAllowed)
 	}
@@ -61,4 +66,34 @@ func CreateNote(note *Note) error {
 	}
 	note.ID = int(id)
 	return nil
+}
+
+func handleGetAllNotes(w http.ResponseWriter, r *http.Request) {
+	notes, err := GetAllNotes()
+	if err != nil {
+		http.Error(w, "get error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(notes)
+}
+
+func GetAllNotes() ([]Note, error) {
+	rows, err := DB.Query("SELECT id, title, content FROM notes")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var notes []Note
+	for rows.Next() {
+		var n Note
+		err := rows.Scan(&n.ID, &n.Title, &n.Content)
+		if err != nil {
+			return nil, err
+		}
+		notes = append(notes, n)
+	}
+	return notes, rows.Err()
 }
