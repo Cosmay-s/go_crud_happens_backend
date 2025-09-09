@@ -4,14 +4,36 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 func NotesHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
+
 	case http.MethodPost:
 		handleCreateNote(w, r)
+
+	case http.MethodGet:
+		handleGetAllNotes(w, r)
+
 	default:
 		http.Error(w, "Method error", http.StatusMethodNotAllowed)
+	}
+}
+
+func NoteByIDHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/notes/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		http.Error(w, "ID error", http.StatusBadRequest)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		handleGetNoteByID(w, r, id)
+	default:
+		http.Error(w, "getbyid method error", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -61,4 +83,54 @@ func CreateNote(note *Note) error {
 	}
 	note.ID = int(id)
 	return nil
+}
+
+func handleGetAllNotes(w http.ResponseWriter, r *http.Request) {
+	notes, err := GetAllNotes()
+	if err != nil {
+		http.Error(w, "get error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(notes)
+}
+
+func GetAllNotes() ([]Note, error) {
+	rows, err := DB.Query("SELECT id, title, content FROM notes")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var notes []Note
+	for rows.Next() {
+		var n Note
+		err := rows.Scan(&n.ID, &n.Title, &n.Content)
+		if err != nil {
+			return nil, err
+		}
+		notes = append(notes, n)
+	}
+	return notes, rows.Err()
+}
+
+func handleGetNoteByID(w http.ResponseWriter, r *http.Request, id int) {
+	note, err := GetNoteByID(id)
+	if err != nil {
+		http.Error(w, "Note ID not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(note)
+}
+
+func GetNoteByID(id int) (*Note, error) {
+	row := DB.QueryRow("SELECT id, title, content FROM notes WHERE id = ?", id)
+	var n Note
+	err := row.Scan(&n.ID, &n.Title, &n.Content)
+	if err != nil {
+		return nil, err
+	}
+	return &n, nil
 }
