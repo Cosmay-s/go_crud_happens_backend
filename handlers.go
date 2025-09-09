@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -30,8 +31,13 @@ func NoteByIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch r.Method {
+
 	case http.MethodGet:
 		handleGetNoteByID(w, r, id)
+
+	case http.MethodPut:
+		handleUpdateNote(w, r, id)
+
 	default:
 		http.Error(w, "getbyid method error", http.StatusMethodNotAllowed)
 	}
@@ -133,4 +139,57 @@ func GetNoteByID(id int) (*Note, error) {
 		return nil, err
 	}
 	return &n, nil
+}
+
+func handleUpdateNote(w http.ResponseWriter, r *http.Request, id int) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Content-Type error", http.StatusUnsupportedMediaType)
+		return
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Read body error", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	var note Note
+	err = json.Unmarshal(body, &note)
+	if err != nil {
+		http.Error(w, "json error", http.StatusBadRequest)
+		return
+	}
+
+	if note.Title == "" || note.Content == "" {
+		http.Error(w, "title or content error", http.StatusBadRequest)
+		return
+	}
+	note.ID = id
+
+	err = UpdateNote(&note)
+
+	if err != nil {
+		http.Error(w, "Update error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(note)
+}
+
+func UpdateNote(note *Note) error {
+	result, err := DB.Exec("UPDATE notes SET title = ?, content = ? WHERE id = ?", note.Title, note.Content, note.ID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
