@@ -12,7 +12,7 @@
 
 ## Запуск проекта
 
-1. Убедитесь, что у вас установлен Go 1.18 или выше.
+1. Убедитесь, что у вас установлен Go 1.24 или выше.
 2. Установите зависимости:
    ```bash
    go get github.com/glebarez/sqlite
@@ -66,5 +66,5 @@ curl -X DELETE http://localhost:8080/notes/1
 
 ## Зависимости
 
-- Go 1.18+
+- Go 1.24+
 - `github.com/glebarez/sqlite` — драйвер SQLite
