@@ -38,6 +38,9 @@ func NoteByIDHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		handleUpdateNote(w, r, id)
 
+	case http.MethodDelete:
+		handleDeleteNote(w, r, id)
+
 	default:
 		http.Error(w, "getbyid method error", http.StatusMethodNotAllowed)
 	}
@@ -191,5 +194,37 @@ func UpdateNote(note *Note) error {
 	if rowsAffected == 0 {
 		return sql.ErrNoRows
 	}
+	return nil
+}
+
+func handleDeleteNote(w http.ResponseWriter, r *http.Request, id int) {
+	err := DeleteNote(id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Note not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to delete note", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func DeleteNote(id int) error {
+	result, err := DB.Exec("DELETE FROM notes WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
 	return nil
 }
